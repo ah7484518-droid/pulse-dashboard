@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f4f7f9;--card:#ffffff;--text:#16212e;--mute:#6b7a8c;--line:#e3e9ef;--accent:#12b5a0;--bad:#e5484d;--warn:#e89b1c;--good:#12a37f}
+[data-theme="dark"]{--bg:#0b1320;--card:#121c2d;--text:#e8eef5;--mute:#8a9bb0;--line:#22304a}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+.hidden{display:none!important}
+button{font:inherit;cursor:pointer}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:36px 30px;width:100%;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,.08)}
+.logo{font-weight:800;font-size:26px;letter-spacing:-.02em}
+.logo span{color:var(--accent)}
+.login-card p{color:var(--mute);margin:6px 0 22px;font-size:14px}
+input,select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;margin-bottom:12px}
+input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent}
+.btn{width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#04231e;font-weight:700}
+.btn:hover{filter:brightness(1.05)}
+.err{color:var(--bad);font-size:13px;min-height:18px;margin-top:10px}
+.hint{font-size:12px;color:var(--mute);margin-top:14px}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--card);border-bottom:1px solid var(--line);gap:12px;flex-wrap:wrap}
+.right{display:flex;gap:10px;align-items:center}
+.who{color:var(--mute);font-size:13px}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--text);padding:8px 14px;border-radius:10px}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 50px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.card small{color:var(--mute);font-size:13px}
+.card .num{font-size:28px;font-weight:800;margin-top:6px;letter-spacing:-.02em}
+h2{font-size:16px;margin-bottom:14px}
+.section{margin-top:18px}
+.chart-box{height:280px;position:relative}
+.tools{display:flex;gap:10px;flex-wrap:wrap}
+.tools input{flex:1;min-width:160px}
+.tools select{width:auto;min-width:140px}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--mute);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.badge{padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700}
+.b-low{background:rgba(229,72,77,.15);color:var(--bad)}
+.b-mid{background:rgba(232,155,28,.17);color:var(--warn)}
+.b-ok{background:rgba(18,163,127,.15);color:var(--good)}
+.today{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.tcard{border-radius:14px;padding:16px;border:1px solid var(--line);background:var(--bg);border-left-width:5px}
+.tcard b{display:block;margin-bottom:6px;font-size:14px}
+.tcard p{font-size:13px;color:var(--mute);line-height:1.5}
+.t-high{border-left-color:var(--bad)}
+.t-medium{border-left-color:var(--warn)}
+.t-good{border-left-color:var(--good)}
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login">
+  <form id="loginForm" class="login-card">
+    <div class="logo">Pulse<span>.</span></div>
+    <p>Sign in to your store dashboard</p>
+    <input id="user" placeholder="Username" value="admin" autocomplete="username">
+    <input id="pass" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="btn" type="submit">Sign in</button>
+    <div id="loginError" class="err"></div>
+    <div class="hint">Demo accounts: admin / admin123 &nbsp;·&nbsp; viewer / viewer123</div>
+  </form>
+</div>
+
+<div id="appView" class="hidden">
+  <header>
+    <div class="logo">Pulse<span>.</span></div>
+    <div class="right">
+      <span id="who" class="who"></span>
+      <button id="themeBtn" class="ghost">Theme</button>
+      <button id="logoutBtn" class="ghost">Logout</button>
+    </div>
+  </header>
+  <main>
+    <div class="card" style="margin-bottom:18px">
+      <h2>Today</h2>
+      <div id="today" class="today"></div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><small>Revenue (30 days)</small><div id="revenue" class="num">-</div></div>
+      <div class="card"><small>Profit (30 days)</small><div id="profit" class="num">-</div></div>
+      <div class="card"><small>Orders (30 days)</small><div id="orders" class="num">-</div></div>
+      <div class="card"><small>Profit margin</small><div id="margin" class="num">-</div></div>
+    </div>
+
+    <div class="card section">
+      <h2>Sales, last 30 days</h2>
+      <div class="chart-box"><canvas id="salesChart"></canvas></div>
+    </div>
+
+    <div class="card section">
+      <h2>Products</h2>
+      <div class="tools">
+        <input id="search" placeholder="Search products...">
+        <select id="filter">
+          <option value="all">All stock levels</option>
+          <option value="low">Low stock only</option>
+        </select>
+      </div>
+      <div class="wrap">
+        <table>
+          <thead><tr><th>Product</th><th>Price</th><th>Cost</th><th>Margin</th><th>Stock</th><th>Status</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let token = localStorage.getItem('pulse_token');
+let products = [];
+let lastSales = [];
+let chart = null;
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const money = n => '$' + Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
+
+async function api(path){
+  const r = await fetch(path,{headers:{Authorization:'Bearer '+token}});
+  if(r.status === 401){ logout(); throw new Error('unauthorized'); }
+  return r.json();
+}
+
+function logout(){
+  localStorage.removeItem('pulse_token');
+  token = null;
+  $('#appView').classList.add('hidden');
+  $('#loginView').classList.remove('hidden');
+}
+
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#loginError').textContent = '';
+  try{
+    const r = await fetch('/auth/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:$('#user').value, password:$('#pass').value})
+    });
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    token = d.access_token;
+    localStorage.setItem('pulse_token', token);
+    localStorage.setItem('pulse_user', d.username + ' · ' + d.role);
+    showApp();
+  }catch{
+    $('#loginError').textContent = 'Wrong username or password';
+  }
+});
+
+$('#logoutBtn').addEventListener('click', logout);
+
+function showApp(){
+  $('#loginView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+  $('#who').textContent = localStorage.getItem('pulse_user') || '';
+  loadData();
+}
+
+async function loadData(){
+  try{
+    const [stats, prods, sales, ins] = await Promise.all([
+      api('/api/stats'), api('/api/products'), api('/api/sales-by-day'), api('/api/insights')
+    ]);
+    products = prods;
+    lastSales = sales;
+    $('#revenue').textContent = money(stats.revenue_30d);
+    $('#profit').textContent = money(stats.profit_30d);
+    $('#orders').textContent = stats.orders_30d;
+    const m = stats.revenue_30d ? stats.profit_30d / stats.revenue_30d * 100 : 0;
+    $('#margin').textContent = m.toFixed(1) + '%';
+    $('#today').innerHTML = ins.length
+      ? ins.map(i => `<div class="tcard t-${i.level}"><b>${esc(i.title)}</b><p>${esc(i.message)}</p></div>`).join('')
+      : '<p style="color:var(--mute)">Everything looks good today.</p>';
+    drawChart();
+    renderTable();
+  }catch(err){ console.error(err); }
+}
+
+function drawChart(){
+  const css = getComputedStyle(document.documentElement);
+  const mute = css.getPropertyValue('--mute').trim();
+  const line = css.getPropertyValue('--line').trim();
+  Chart.defaults.color = mute;
+  if(chart) chart.destroy();
+  chart = new Chart($('#salesChart'),{
+    type:'line',
+    data:{
+      labels:lastSales.map(s => s.date.slice(5)),
+      datasets:[{
+        data:lastSales.map(s => s.total),
+        borderColor:'#12b5a0',
+        backgroundColor:'rgba(18,181,160,.15)',
+        fill:true, tension:.35, pointRadius:0, borderWidth:2.5
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false}}, y:{grid:{color:line}}}
+    }
+  });
+}
+
+function renderTable(){
+  const q = $('#search').value.toLowerCase();
+  const onlyLow = $('#filter').value === 'low';
+  const rows = products
+    .filter(p => p.name.toLowerCase().includes(q))
+    .filter(p => !onlyLow || p.stock < 10)
+    .map(p => {
+      const margin = ((p.price - p.cost) / p.price * 100).toFixed(0);
+      let cls = 'b-ok', label = 'Good';
+      if(p.stock < 10){ cls = 'b-low'; label = 'Low'; }
+      else if(p.stock < 30){ cls = 'b-mid'; label = 'Medium'; }
+      return `<tr>
+        <td><b>${esc(p.name)}</b></td>
+        <td>${money(p.price)}</td>
+        <td>${money(p.cost)}</td>
+        <td>${margin}%</td>
+        <td>${p.stock}</td>
+        <td><span class="badge ${cls}">${label}</span></td>
+      </tr>`;
+    }).join('');
+  $('#rows').innerHTML = rows || '<tr><td colspan="6">No products found</td></tr>';
+}
+
+$('#search').addEventListener('input', renderTable);
+$('#filter').addEventListener('change', renderTable);
+
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('pulse_theme', t);
+  if(lastSales.length) drawChart();
+}
+$('#themeBtn').addEventListener('click', () => {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+applyTheme(localStorage.getItem('pulse_theme') || 'light');
+
+if(token) showApp();
+</script>
+</body>
+</html>
